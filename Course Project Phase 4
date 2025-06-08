@@ -1,0 +1,347 @@
+1 import datetime
+   2 
+   3 # --- Part 1: User Management ---
+   4 
+   5 USER_FILE = 'users.txt'
+   6 
+   7 def load_user_ids():
+   8     """
+   9     Reads existing user IDs from the USER_FILE for validation.
+  10     Returns a list of user IDs.
+  11     """
+  12     user_ids = []
+  13     try:
+  14         with open(USER_FILE, 'r') as file:
+  15             for line in file:
+  16                 parts = line.strip().split('|')
+  17                 if len(parts) >= 1:
+  18                     user_ids.append(parts[0])
+  19     except FileNotFoundError:
+  20         pass  # File will be created if it doesn't exist
+  21     return user_ids
+  22 
+  23 def add_new_users():
+  24     """
+  25     Prompts the user to input new user IDs, passwords, and authorization codes.
+  26     Validates input and appends valid user data to the USER_FILE.
+  27     """
+  28     print("\n--- Add New Users ---")
+  29     current_user_ids = load_user_ids()
+  30     
+  31     with open(USER_FILE, 'a') as file:  # Open in append mode
+  32         while True:
+  33             user_id = input("Enter User ID (type 'End' to terminate): ").strip()
+  34             if user_id.lower() == 'end':
+  35                 break
+  36 
+  37             if user_id in current_user_ids:
+  38                 print("Error: User ID already exists. Please enter a unique ID.")
+  39                 continue
+  40 
+  41             password = input("Enter Password: ").strip()
+  42             if not password:
+  43                 print("Error: Password cannot be empty.")
+  44                 continue
+  45 
+  46             auth_code = ""
+  47             while auth_code not in ["Admin", "User"]:
+  48                 auth_code = input("Enter Authorization Code (Admin/User): ").strip()
+  49                 if auth_code not in ["Admin", "User"]:
+  50                     print("Error: Authorization code must be 'Admin' or 'User'.")
+  51 
+  52             # Write user data to file
+  53             file.write(f"{user_id}|{password}|{auth_code}\n")
+  54             current_user_ids.append(user_id) # Add to list for immediate validation
+  55             print(f"User '{user_id}' added successfully.")
+  56     print("User data entry terminated.")
+  57 
+  58 def display_all_users():
+  59     """
+  60     Opens the USER_FILE and displays all stored user IDs, passwords, and authorization codes.
+  61     """
+  62     print("\n--- All User Information ---")
+  63     try:
+  64         with open(USER_FILE, 'r') as file:
+  65             for line in file:
+  66                 user_id, password, auth_code = line.strip().split('|')
+  67                 print(f"User ID: {user_id}, Password: {password}, Authorization: {auth_code}")
+  68     except FileNotFoundError:
+  69         print("No user data found. Please add users first.")
+  70     except ValueError:
+  71         print("Error reading user data. File format might be incorrect.")
+  72 
+  73 
+  74 # --- Part 2: Updating the Existing Application (Login Class & Functionality) ---
+  75 
+  76 class Login:
+  77     """
+  78     Represents a user's login session with User ID, Password, and Authorization.
+  79     """
+  80     def __init__(self, user_id, password, authorization):
+  81         self.user_id = user_id
+  82         self.password = password
+  83         self.authorization = authorization
+  84 
+  85 def process_login():
+  86     """
+  87     Handles the user login process.
+  88     Validates user ID and password against stored records.
+  89     Returns a Login object if successful, None otherwise.
+  90     """
+  91     print("\n--- User Login ---")
+  92     user_records = []
+  93     try:
+  94         with open(USER_FILE, 'r') as file:
+  95             for line in file:
+  96                 parts = line.strip().split('|')
+  97                 if len(parts) == 3:
+  98                     user_records.append(parts)
+  99                 else:
+ 100                     print(f"Warning: Skipping malformed user record: {line.strip()}")
+ 101     except FileNotFoundError:
+ 102         print("Error: User data file not found. Please add users first.")
+ 103         return None
+ 104 
+ 105     input_user_id = input("Enter User ID: ").strip()
+ 106     input_password = input("Enter Password: ").strip()
+ 107 
+ 108     authenticated_user = None
+ 109     for record_user_id, record_password, record_auth in user_records:
+ 110         if input_user_id == record_user_id:
+ 111             if input_password == record_password:
+ 112                 authenticated_user = Login(record_user_id, record_password, record_auth)
+ 113                 break
+ 114             else:
+ 115                 print("Error: Incorrect password for the given User ID.")
+ 116                 return None
+ 117     
+ 118     if authenticated_user is None:
+ 119         print("Error: User ID not found.")
+ 120         return None
+ 121     
+ 122     print("Login successful!")
+ 123     return authenticated_user
+ 124 
+ 125 
+ 126 # --- Existing Payroll System Code (Modified) ---
+ 127 
+ 128 # Global variable to hold the authenticated user
+ 129 current_authenticated_user = None
+ 130 
+ 131 def import_data(filename='employees.txt'):
+ 132     """Imports employee data from a file and returns it as a dictionary."""
+ 133     employees = {}
+ 134     try:
+ 135         with open(filename, 'r') as file:
+ 136             for line in file:
+ 137                 parts = line.strip().split('|')
+ 138                 if len(parts) == 7: # Assuming 7 parts for full employee record
+ 139                     employee_id, name, hours_worked, hourly_rate, gross_pay, income_tax, net_pay = parts
+ 140                     employees[employee_id] = {
+ 141                         'name': name,
+ 142                         'hours_worked': float(hours_worked),
+ 143                         'hourly_rate': float(hourly_rate),
+ 144                         'gross_pay': float(gross_pay),
+ 145                         'income_tax': float(income_tax),
+ 146                         'net_pay': float(net_pay)
+ 147                     }
+ 148                 elif len(parts) >= 3: # For initial records with just ID, name, hours, rate
+ 149                      employee_id, name, hours_worked, hourly_rate = parts[:4]
+ 150                      employees[employee_id] = {
+ 151                         'name': name,
+ 152                         'hours_worked': float(hours_worked),
+ 153                         'hourly_rate': float(hourly_rate),
+ 154                         'gross_pay': 0.0, # Initialize
+ 155                         'income_tax': 0.0,
+ 156                         'net_pay': 0.0
+ 157                     }
+ 158     except FileNotFoundError:
+ 159         print(f"Warning: Employee data file '{filename}' not found. Starting with no employee records.")
+ 160     except Exception as e:
+ 161         print(f"Error importing data from {filename}: {e}")
+ 162     return employees
+ 163 
+ 164 def get_employee_details(employees):
+ 165     """
+ 166     Obtains employee details (ID, name, hours, rate) with validation.
+ 167     Returns a dictionary of employee data if successful, None otherwise.
+ 168     """
+ 169     employee_data = {}
+ 170     
+ 171     employee_id = input("Enter Employee ID: ").strip()
+ 172     if employee_id in employees:
+ 173         print("Error: Employee ID already exists. Please enter a unique ID.")
+ 174         return None
+ 175     
+ 176     name = ""
+ 177     while not name:
+ 178         name = input("Enter Employee Name: ").strip()
+ 179         if not name:
+ 180             print("Error: Employee name cannot be empty. Please enter a valid name.")
+ 181     
+ 182     total_hours_worked = -1.0
+ 183     while not (0 <= total_hours_worked <= 168): # Assuming max 168 hours in a week
+ 184         try:
+ 185             total_hours_worked = float(input("Enter Total Hours Worked: "))
+ 186             if total_hours_worked < 0:
+ 187                 print("Error: Hours worked cannot be negative. Please enter a valid number.")
+ 188             elif total_hours_worked > 168:
+ 189                 print("Error: Hours worked cannot exceed 168 hours in a week. Please enter a valid number.")
+ 190         except ValueError:
+ 191             print("Invalid input: Please enter a numeric value for total hours worked.")
+ 192 
+ 193     hourly_rate = -1.0
+ 194     while hourly_rate < 0:
+ 195         try:
+ 196             hourly_rate = float(input("Enter Hourly Rate ($): "))
+ 197             if hourly_rate < 0:
+ 198                 print("Error: Hourly rate cannot be negative. Please enter a valid number.")
+ 199         except ValueError:
+ 200             print("Invalid input: Please enter a numeric value for the hourly rate.")
+ 201             
+ 202     employee_data['id'] = employee_id
+ 203     employee_data['name'] = name
+ 204     employee_data['hours_worked'] = total_hours_worked
+ 205     employee_data['hourly_rate'] = hourly_rate
+ 206     return employee_data
+ 207 
+ 208 
+ 209 def get_income_tax_rate():
+ 210     """Obtains and validates the income tax rate from the user."""
+ 211     income_tax_rate = -1.0
+ 212     while not (0 <= income_tax_rate <= 0.15):
+ 213         try:
+ 214             income_tax_rate = float(input("Enter Income Tax Rate (as a decimal, e.g., 0.15 for 15%): "))
+ 215             if not (0 <= income_tax_rate <= 0.15):
+ 216                 print("Error: Income tax rate must be between 0 and 0.15 (0% to 15%).")
+ 217         except ValueError:
+ 218             print("Invalid input: Please enter a numeric value for the income tax rate.")
+ 219     return income_tax_rate
+ 220 
+ 221 def get_date(prompt="Enter the date for the payroll period (YYYY-MM-DD): "):
+ 222     """Obtains and validates a date string in YYYY-MM-DD format."""
+ 223     while True:
+ 224         date_str = input(prompt).strip()
+ 225         try:
+ 226             datetime.datetime.strptime(date_str, '%Y-%m-%d').date()
+ 227             return date_str
+ 228         except ValueError:
+ 229             print("Invalid date format. Please use YYYY-MM-DD.")
+ 230 
+ 231 def calculate_pay(hours_worked, hourly_rate, income_tax_rate):
+ 232     """Calculates gross pay, income tax, and net pay."""
+ 233     gross_pay = hours_worked * hourly_rate
+ 234     income_tax = gross_pay * income_tax_rate
+ 235     net_pay = gross_pay - income_tax
+ 236     return gross_pay, income_tax, net_pay
+ 237 
+ 238 def save_data(employees, filename='employees.txt'):
+ 239     """Saves employee payroll data to a pipe-delimited text file."""
+ 240     try:
+ 241         with open(filename, 'w') as file:
+ 242             for employee_id, data in employees.items():
+ 243                 file.write(f"{employee_id}|{data['name']}|{data['hours_worked']}|"
+ 244                           f"{data['hourly_rate']}|{data['gross_pay']}|"
+ 245                           f"{data['income_tax']}|{data['net_pay']}\n")
+ 246         print(f"Employee payroll data saved to {filename}.")
+ 247     except Exception as e:
+ 248         print(f"Error saving data to {filename}: {e}")
+ 249 
+ 250 def generate_report(employees, payroll_date):
+ 251     """Generates and displays a detailed payroll report."""
+ 252     print("\n--- Payroll Report ---")
+ 253     print(f"Payroll Date: {payroll_date}")
+ 254     print("-" * 50)
+ 255     print(f"{'ID':<10}{'Name':<20}{'Hours':<8}{'Rate':<8}{'Gross':<10}{'Tax':<10}{'Net':<10}")
+ 256     print("-" * 50)
+ 257 
+ 258     total_gross_pay = 0.0
+ 259     total_income_tax = 0.0
+ 260     total_net_pay = 0.0
+ 261 
+ 262     if not employees:
+ 263         print("No employee records to display.")
+ 264         return
+ 265 
+ 266     for employee_id, data in employees.items():
+ 267         print(f"{employee_id:<10}{data['name']:<20}{data['hours_worked']:<8.2f}"
+ 268               f"{data['hourly_rate']:<8.2f}{data['gross_pay']:<10.2f}"
+ 269               f"{data['income_tax']:<10.2f}{data['net_pay']:<10.2f}")
+ 270         total_gross_pay += data['gross_pay']
+ 271         total_income_tax += data['income_tax']
+ 272         total_net_pay += data['net_pay']
+ 273 
+ 274     print("-" * 50)
+ 275     print(f"{'Totals:':<46}{total_gross_pay:<10.2f}{total_income_tax:<10.2f}{total_net_pay:<10.2f}")
+ 276     print("-" * 50)
+ 277 
+ 278 def main():
+ 279     """Main function to run the payroll application."""
+ 280     global current_authenticated_user # Declare as global to modify it
+ 281 
+ 282     print("Welcome to the Payroll Management System!")
+ 283 
+ 284     # Login process
+ 285     current_authenticated_user = process_login()
+ 286     if current_authenticated_user is None:
+ 287         print("Login failed. Exiting application.")
+ 288         return
+ 289 
+ 290     # Display authenticated user's details
+ 291     print("\n--- Authenticated User Details ---")
+ 292     print(f"User ID: {current_authenticated_user.user_id}")
+ 293     print(f"Password: {current_authenticated_user.password}") # For demonstration, normally masked
+ 294     print(f"Authorization: {current_authenticated_user.authorization}")
+ 295     print("-" * 30)
+ 296 
+ 297     employees = import_data()
+ 298     payroll_date = get_date()
+ 299     income_tax_rate = get_income_tax_rate()
+ 300 
+ 301     if current_authenticated_user.authorization == "Admin":
+ 302         print("\n--- Admin Mode: Data Entry and Display ---")
+ 303         while True:
+ 304             choice = input("\nEnter 'A' to Add Employee, 'P' to Process Payroll, 'R' to Generate Report, 'E' to Exit: ").upper()
+ 305             if choice == 'A':
+ 306                 new_employee_data = get_employee_details(employees)
+ 307                 if new_employee_data:
+ 308                     employee_id = new_employee_data['id']
+ 309                     employees[employee_id] = {
+ 310                         'name': new_employee_data['name'],
+ 311                         'hours_worked': new_employee_data['hours_worked'],
+ 312                         'hourly_rate': new_employee_data['hourly_rate'],
+ 313                         'gross_pay': 0.0, # Initialize
+ 314                         'income_tax': 0.0,
+ 315                         'net_pay': 0.0
+ 316                     }
+ 317                     print(f"Employee '{new_employee_data['name']}' added to memory.")
+ 318             elif choice == 'P':
+ 319                 if not employees:
+ 320                     print("No employees to process payroll for. Please add employees first.")
+ 321                     continue
+ 322                 for employee_id, data in employees.items():
+ 323                     gross, tax, net = calculate_pay(data['hours_worked'], data['hourly_rate'], income_tax_rate)
+ 324                     data['gross_pay'] = gross
+ 325                     data['income_tax'] = tax
+ 326                     data['net_pay'] = net
+ 327                 save_data(employees)
+ 328                 print("Payroll processed and data saved.")
+ 329             elif choice == 'R':
+ 330                 generate_report(employees, payroll_date)
+ 331             elif choice == 'E':
+ 332                 break
+ 333             else:
+ 334                 print("Invalid choice. Please try again.")
+ 335     elif current_authenticated_user.authorization == "User":
+ 336         print("\n--- User Mode: Display Data Only ---")
+ 337         generate_report(employees, payroll_date) # Only display functionality
+ 338         
+ 339     print("\nProgram finished.")
+ 340 
+ 341 if __name__ == "__main__":
+ 342     # First, allow adding/displaying users for setup
+ 343     # Uncomment these lines if you need to manage users before running the main payroll app
+ 344     # add_new_users()
+ 345     # display_all_users()
+ 346     
+ 347     main()
